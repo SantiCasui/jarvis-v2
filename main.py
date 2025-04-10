@@ -1,59 +1,46 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import requests
 import os
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+)
 
-# API de precios
-API_KEY = '354c41fa243c4677a4491f35884d1fcb'
-BASE_URL = 'https://financialmodelingprep.com/api/v3/quote/'
+# Cargar token y URL desde variables de entorno
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Ej: https://tubot.onrender.com/webhook
 
-# Activos disponibles
-SIMBOLOS = {
-    'btc': 'BTCUSD',
-    'oro': 'XAUUSD',
-    'nasdaq': '^IXIC',
-    'eurusd': 'EURUSD',
-    'eurjpy': 'EURJPY',
-    'usdjpy': 'USDJPY'
-}
+app = Flask(__name__)
 
-# Obtener precio actual
-def obtener_precio(simbolo):
-    try:
-        url = f"{BASE_URL}{simbolo}?apikey={API_KEY}"
-        respuesta = requests.get(url)
-        datos = respuesta.json()
-        if datos and 'price' in datos[0]:
-            precio = datos[0]['price']
-            return f"💰 El precio actual de {simbolo} es: ${precio:.2f}"
-        else:
-            return "❌ No se pudo obtener el precio en este momento."
-    except Exception as e:
-        return f"⚠️ Error: {e}"
+# Crear aplicación de telegram
+telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("¿En qué puedo servirle, señor?")
+# Comando /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("¡Hola! Soy tu bot 🤖.")
 
-# /precio
-async def precio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        activo = context.args[0].lower()
-        if activo in SIMBOLOS:
-            simbolo = SIMBOLOS[activo]
-            mensaje = obtener_precio(simbolo)
-        else:
-            mensaje = "❗ Activo no reconocido. Usa: btc, oro, nasdaq, eurusd, eurjpy, usdjpy."
-    except IndexError:
-        mensaje = "❗ Escribe el activo. Ej: /precio btc"
-    await update.message.reply_text(mensaje)
+# Otros comandos
+async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"Hola {update.effective_user.first_name} 👋")
 
-# Iniciar aplicación
-if __name__ == '__main__':
-    TOKEN = os.environ.get('BOT_TOKEN')  # En Render debes definir esta variable de entorno
-    app = ApplicationBuilder().token(TOKEN).build()
+# Añadir handlers
+telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(CommandHandler("hello", hello))
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("precio", precio))
+# Webhook para recibir actualizaciones de Telegram
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    telegram_app.update_queue.put_nowait(update)
+    return "ok"
 
-    app.run_polling()
+# Endpoint para establecer el webhook (solo una vez)
+@app.route("/set_webhook", methods=["GET"])
+def set_webhook():
+    telegram_app.bot.set_webhook(url=WEBHOOK_URL + "/webhook")
+    return "Webhook configurado"
+
+# Inicio manual local
+if __name__ == "__main__":
+    app.run(port=5000)
