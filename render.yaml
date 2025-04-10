@@ -6,6 +6,6 @@ services:
     startCommand: python main.py
     envVars:
       - key: BOT_TOKEN
-        value: PON_TU_TOKEN_AQUI
+        value: 7923861978:AAGWrEPgItrlkzBtmYmIXdbKNdNJVb4UPBw
       - key: WEBHOOK_URL
-        value: https://TU_URL_DE_RENDER.onrender.com
+        value: https://jarvis-v2-8349.onrender.com
