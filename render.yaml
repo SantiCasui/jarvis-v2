@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: jarvis-telegram
+    env: python
+    buildCommand: ""
+    startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        value: PON_TU_TOKEN_AQUI
+      - key: WEBHOOK_URL
+        value: https://TU_URL_DE_RENDER.onrender.com
